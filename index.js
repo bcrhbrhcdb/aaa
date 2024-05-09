@@ -2,6 +2,13 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const adapter = new FileSync('db.json');
+const db = low(adapter);
+
+// Set some defaults (required if your JSON file is empty)
+db.defaults({ messages: [] }).write();
 
 // Serve static files from the "public" directory
 app.use(express.static('public'));
@@ -33,7 +40,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('message', (message) => {
-    io.emit('message', { user: users[socket.id], message: message });
+    const userData = { user: users[socket.id], message: message };
+    io.emit('message', userData);
+    db.get('messages').push(userData).write();
   });
 
   socket.on('disconnect', () => {
@@ -44,6 +53,7 @@ io.on('connection', (socket) => {
   });
 });
 
-http.listen(3000, () => {
-  console.log('Server is running on http://localhost:3000');
+const port = process.env.PORT || 3000;
+http.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
